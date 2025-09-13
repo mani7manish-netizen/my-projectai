@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Financial Tool — Single-file HTML</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f7fafc;--card:#ffffff;--muted:#6b7280;--accent:#4f46e5}
+    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:var(--bg);color:#0f172a}
+    .wrap{max-width:1100px;margin:28px auto;padding:18px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .card{background:var(--card);border-radius:10px;padding:14px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+    .grid{display:grid;gap:14px}
+    .cols-3{grid-template-columns:320px 1fr 320px}
+    label{font-size:13px;color:var(--muted)}
+    input,select,button,textarea{font-size:14px}
+    input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e6e9ef;margin-top:6px}
+    button{padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:13px}
+    .muted{color:var(--muted);font-size:13px}
+    .small{font-size:12px;color:var(--muted)}
+    .flex{display:flex;gap:8px;align-items:center}
+    .right{justify-content:flex-end}
+    .chart-wrap{height:260px}
+    .pill{background:#eef2ff;color:#3730a3;padding:6px 8px;border-radius:999px;font-weight:600}
+    @media(max-width:980px){.cols-3{grid-template-columns:1fr} .chart-wrap{height:220px}}
+  </style>
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1 style="margin:0;font-size:20px">AI Financial Tool — HTML single-file</h1>
+        <div class="small">Automated categorization • Predictive spending • Goals • Budget alerts</div>
+      </div>
+      <div class="flex">
+        <div class="pill" id="entryCount">Entries: 0</div>
+      </div>
+    </header>
+
+    <div class="grid cols-3">
+      <!-- Left column: add expense, budgets, goals -->
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">Add expense</h3>
+        <form id="expenseForm">
+          <label>Date<input type="date" id="eDate" required></label>
+          <label>Amount<input type="number" step="0.01" id="eAmount" required></label>
+          <label>Description<input id="eDesc" placeholder="e.g., Lunch at Cafe"></label>
+          <label>Merchant<input id="eMerchant" placeholder="e.g., Zomato"></label>
+          <label>Category
+            <select id="eCategory"><option value="">Auto</option><option>Housing</option><option>Food</option><option>Transport</option><option>Utilities</option><option>Entertainment</option><option>Health</option><option>Other</option></select>
+          </label>
+          <div style="margin-top:8px" class="flex">
+            <button type="submit">Add expense</button>
+            <button type="button" id="resetBtn" style="background:#efefef;color:#111">Reset</button>
+          </div>
+        </form>
+
+        <hr style="margin:12px 0">
+        <h4 style="margin:0 0 8px 0">Budgets</h4>
+        <div class="small">Set monthly budgets per category or Overall</div>
+        <div style="margin-top:8px" class="flex">
+          <input id="budgetCat" placeholder="Category or Overall">
+          <input id="budgetAmt" placeholder="Amount" style="width:120px">
+          <button id="setBudget">Set</button>
+        </div>
+        <div id="budgetsList" style="margin-top:10px" class="small">No budgets set</div>
+
+        <hr style="margin:12px 0">
+        <h4 style="margin:0 0 8px 0">Goals</h4>
+        <form id="goalForm">
+          <input id="goalName" placeholder="Goal name (e.g., Vacation)" required>
+          <div class="flex" style="margin-top:8px">
+            <input id="goalAmt" placeholder="Target amount" required>
+            <input type="date" id="goalDate">
+          </div>
+          <div style="margin-top:8px" class="flex">
+            <button type="submit">Add goal</button>
+          </div>
+        </form>
+        <div id="goalsList" style="margin-top:8px" class="small">No goals</div>
+      </div>
+
+      <!-- Middle column: charts and transactions -->
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="flex" style="justify-content:space-between;align-items:center">
+            <h3 style="margin:0">Spending & Forecast</h3>
+            <div class="small">Show months: <select id="monthsShow"><option>3</option><option selected>6</option><option>9</option><option>12</option></select></div>
+          </div>
+          <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+          <div class="small" style="margin-top:6px">Forecast uses simple linear trend over visible months to predict next 3 months.</div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0">Recent transactions</h3>
+          <div style="margin-top:8px;max-height:260px;overflow:auto">
+            <table id="txnTable"><thead><tr><th>Date</th><th>Amount</th><th>Category</th><th>Description</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: category pie, alerts, export/import -->
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">Category breakdown</h3>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+
+        <hr style="margin:12px 0">
+        <h4 style="margin:0 0 8px 0">Alerts</h4>
+        <div id="alerts" class="small">No alerts</div>
+
+        <hr style="margin:12px 0">
+        <div class="flex">
+          <button id="exportBtn" style="background:#111;color:white">Export JSON</button>
+          <label style="background:#efefef;padding:8px;border-radius:8px;cursor:pointer;color:#111">Import
+            <input type="file" id="importFile" accept="application/json" style="display:none">
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Simple AI-ish rules for categorization ---
+    const keywordCategoryMap = {
+      Food: ['restaurant','cafe','coffee','deli','uber eats','zomato','swiggy','dominos','mcdonald','kfc','pizza'],
+      Transport: ['uber','ola','taxi','bus','metro','fuel','petrol','diesel','parking'],
+      Housing: ['rent','landlord','mortgage'],
+      Utilities: ['electricity','water','gas bill','internet','wifi','electric'],
+      Entertainment: ['netflix','spotify','movie','concert','event','games'],
+      Health: ['pharmacy','clinic','hospital','doctor','fitness','gym']
+    };
+
+    function autoCategorize(description, merchant) {
+      const text = ((description||'') + ' ' + (merchant||'')).toLowerCase();
+      for (const [cat, kws] of Object.entries(keywordCategoryMap)) {
+        for (const kw of kws) if (text.includes(kw)) return cat;
+      }
+      return 'Other';
+    }
+
+    // --- Storage ---
+    const STORAGE_KEY = 'ai_fin_tool_html_v1';
+    let state = { expenses: [], budgets: {}, goals: [] };
+    function loadState(){ try{ const raw = localStorage.getItem(STORAGE_KEY); if(raw) state = JSON.parse(raw); }catch(e){} }
+    function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    // --- Helpers: group by month ---
+    function monthKey(dateStr){ const d = new Date(dateStr); return d.getFullYear().toString().padStart(4,'0') + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+    function groupByMonth(expenses){ const map={}; expenses.forEach(e=>{ const m=monthKey(e.date); map[m]=map[m]||{total:0,byCategory:{}}; map[m].total+=Number(e.amount); map[m].byCategory[e.category]=(map[m].byCategory[e.category]||0)+Number(e.amount); }); const keys=Object.keys(map).sort(); return keys.map(k=>({month:k,total:Number(map[k].total.toFixed(2)),byCategory:map[k].byCategory})); }
+
+    // --- Linear regression for forecast ---
+    function linearRegressionPredict(monthlyTotals, monthsToPredict=3){ if(monthlyTotals.length===0) return []; const n=monthlyTotals.length; const xs=[],ys=[]; for(let i=0;i<n;i++){ xs.push(i); ys.push(monthlyTotals[i].total); } const xMean=xs.reduce((a,b)=>a+b,0)/n; const yMean=ys.reduce((a,b)=>a+b,0)/n; let num=0,den=0; for(let i=0;i<n;i++){ num+=(xs[i]-xMean)*(ys[i]-yMean); den+=(xs[i]-xMean)*(xs[i]-xMean); } const m = den===0?0:num/den; const b = yMean - m*xMean; const preds=[]; for(let k=1;k<=monthsToPredict;k++){ const x = n-1 + k; const y = m*x + b; const last = monthlyTotals[n-1].month.split('-').map(Number); const totalMonths = last[0]*12 + (last[1]-1) + k; const predYear = Math.floor(totalMonths/12); const predMonth = (totalMonths%12)+1; const label = predYear.toString().padStart(4,'0') + '-' + String(predMonth).padStart(2,'0'); preds.push({month:label,total:Math.max(0,Number(y.toFixed(2)))}); } return preds; }
+
+    // --- UI elements ---
+    const entryCount = document.getElementById('entryCount');
+    const txnTbody = document.querySelector('#txnTable tbody');
+    const budgetsList = document.getElementById('budgetsList');
+    const goalsList = document.getElementById('goalsList');
+    const alertsDiv = document.getElementById('alerts');
+    const monthsShow = document.getElementById('monthsShow');
+
+    // Charts
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    let lineChart=null, pieChart=null;
+
+    function renderCharts(){ const months = groupByMonth(state.expenses); const lastN = Number(monthsShow.value); const visible = months.slice(-lastN);
+      const forecast = linearRegressionPredict(visible,3);
+      const combined = visible.concat(forecast);
+      const labels = combined.map(m=>m.month);
+      const data = combined.map(m=>m.total);
+      if(lineChart) lineChart.destroy();
+      lineChart = new Chart(lineCtx, { type:'line', data:{labels, datasets:[{label:'Total', data, fill:false, tension:0.2}]}, options:{plugins:{legend:{display:false}}} });
+
+      // pie
+      const catMap = {};
+      state.expenses.forEach(e=> catMap[e.category]=(catMap[e.category]||0)+Number(e.amount));
+      const pieLabels = Object.keys(catMap); const pieData = pieLabels.map(k=>Number(catMap[k].toFixed(2)));
+      if(pieChart) pieChart.destroy();
+      pieChart = new Chart(pieCtx, { type:'pie', data:{labels:pieLabels, datasets:[{data:pieData}]}, options:{} });
+    }
+
+    function renderTxns(){ txnTbody.innerHTML=''; const rows = state.expenses.slice(-100).reverse(); rows.forEach(e=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${e.date}</td><td>${Number(e.amount).toFixed(2)}</td><td>${e.category}</td><td>${e.description||e.merchant||''}</td>`; txnTbody.appendChild(tr); }); entryCount.textContent = 'Entries: ' + state.expenses.length; }
+
+    function renderBudgets(){ const keys = Object.keys(state.budgets); if(keys.length===0) budgetsList.textContent='No budgets set'; else{ budgetsList.innerHTML = '<ul style="margin:6px 0;padding-left:18px">' + keys.map(k=>`<li>${k}: ${state.budgets[k]}</li>`).join('') + '</ul>'; } }
+
+    function renderGoals(){ if(state.goals.length===0) goalsList.textContent='No goals'; else{ goalsList.innerHTML = state.goals.map(g=>`<div style="padding:8px;border-radius:8px;border:1px solid #f1f5f9;margin-bottom:8px"><div style="display:flex;justify-content:space-between"><strong>${g.name}</strong><div>${(g.savedAmount||0)}/${g.targetAmount}</div></div><div class="small">Target by ${g.targetDate||'—'}</div></div>`).join(''); } }
+
+    function checkBudgets(){ const now = new Date(); const label = monthKey(now.toISOString()); const months = groupByMonth(state.expenses); const current = months.find(m=>m.month===label) || {total:0, byCategory:{}}; const alerts=[]; if(state.budgets['Overall'] && current.total > state.budgets['Overall']){ alerts.push(`You exceeded overall monthly budget (${current.total} > ${state.budgets['Overall']})`); }
+      for(const [cat,limit] of Object.entries(state.budgets)){ if(cat==='Overall') continue; const spent = current.byCategory[cat]||0; if(limit && spent > limit) alerts.push(`You exceeded ${cat} budget (${spent} > ${limit})`); }
+      if(alerts.length){ alertsDiv.innerHTML = '<ul style="padding-left:18px">' + alerts.map(a=>`<li>${a}</li>`).join('') + '</ul>'; // desktop notify
+        if('Notification' in window && Notification.permission==='granted'){ alerts.forEach(a=> new Notification('Budget alert', {body:a})); }
+      } else alertsDiv.textContent='No alerts'; }
+
+    // --- Wire forms ---
+    document.getElementById('expenseForm').addEventListener('submit', function(ev){ ev.preventDefault(); const date=document.getElementById('eDate').value || new Date().toISOString().slice(0,10); const amount=document.getElementById('eAmount').value; const description=document.getElementById('eDesc').value; const merchant=document.getElementById('eMerchant').value; let category=document.getElementById('eCategory').value; if(!category) category = autoCategorize(description, merchant); const obj = {id:Date.now().toString(),date,amount:Number(amount),description,merchant,category}; state.expenses.push(obj); saveState(); renderTxns(); renderCharts(); checkBudgets(); });
+    document.getElementById('resetBtn').addEventListener('click', ()=>{ document.getElementById('eDate').value=''; document.getElementById('eAmount').value=''; document.getElementById('eDesc').value=''; document.getElementById('eMerchant').value=''; document.getElementById('eCategory').value=''; });
+
+    document.getElementById('setBudget').addEventListener('click', ()=>{ const cat=document.getElementById('budgetCat').value.trim(); const amt=document.getElementById('budgetAmt').value; if(!cat) return alert('Enter category or Overall'); if(amt) state.budgets[cat]=Number(amt); else delete state.budgets[cat]; saveState(); renderBudgets(); document.getElementById('budgetCat').value=''; document.getElementById('budgetAmt').value=''; checkBudgets(); });
+
+    document.getElementById('goalForm').addEventListener('submit', function(ev){ ev.preventDefault(); const name=document.getElementById('goalName').value; const targetAmount=Number(document.getElementById('goalAmt').value); const targetDate=document.getElementById('goalDate').value; state.goals.push({id:Date.now().toString(),name,targetAmount,savedAmount:0,targetDate}); saveState(); renderGoals(); this.reset(); });
+
+    document.getElementById('exportBtn').addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='ai_financial_export.json'; a.click(); URL.revokeObjectURL(url); });
+    document.getElementById('importFile').addEventListener('change', function(){ const f=this.files[0]; if(!f) return; const r=new FileReader(); r.onload = e=>{ try{ const parsed = JSON.parse(e.target.result); state = {...state,...parsed}; saveState(); initUI(); }catch(err){ alert('Invalid file'); } }; r.readAsText(f); });
+
+    monthsShow.addEventListener('change', ()=>{ renderCharts(); });
+
+    // --- Init ---
+    function initUI(){ loadState(); renderTxns(); renderCharts(); renderBudgets(); renderGoals(); checkBudgets(); if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission().catch(()=>{}); } }
+    initUI();
+  </script>
+</body>
+</html>
